@@ -21,6 +21,8 @@ from typing import List, Any
 
 class TerminalMail():
 
+    # XXX 'UNSELECT'
+
     def __init__(self, usr: str, passwd: str) -> None:
         self.username = usr
         self.password = passwd
@@ -28,6 +30,55 @@ class TerminalMail():
         if not self.session:
             print('Error: TerminalMail Failed to create mail session')
             sys.exit(-1)
+
+    def __enter__(self):
+        return self.session
+
+    def __exit__(self):
+        # RFC 9051
+        #  3.4 Logout
+        # IMAP Server must send a 'BYE' and 'OK' to the 'LOGOUT' command
+        # Clients should not unilaterally 'close' the connection but
+        # instead issue a 'LOGOUT' command.  If a client does close then
+        # the server may bypass the 'BYE/OK' messages
+        '''
+                      +----------------------+
+                      |connection established|
+                      +----------------------+
+                                 ||
+                                 \/
+               +--------------------------------------+
+               |          server greeting             |
+               +--------------------------------------+
+                         || (1)       || (2)        || (3)
+                         \/           ||            ||
+               +-----------------+    ||            ||
+               |Not Authenticated|    ||            ||
+               +-----------------+    ||            ||
+                || (7)   || (4)       ||            ||
+                ||       \/           \/            ||
+                ||     +----------------+           ||
+                ||     | Authenticated  |<=++       ||
+                ||     +----------------+  ||       ||
+                ||       || (7)   || (5)   || (6)   ||
+                ||       ||       \/       ||       ||
+                ||       ||    +--------+  ||       ||
+                ||       ||    |Selected|==++       ||
+                ||       ||    +--------+           ||
+                ||       ||       || (7)            ||
+                \/       \/       \/                \/
+               +--------------------------------------+
+               |               Logout                 |
+               +--------------------------------------+
+                                 ||
+                                 \/
+                   +-------------------------------+
+                   |both sides close the connection|
+                   +-------------------------------+
+        '''
+        self.session.logout()
+        self.session = None
+        return
 
     def create_session(self, port:int=993) -> imaplib.IMAP4_SSL:
         mail_session = imaplib.IMAP4_SSL('imap-mail.outlook.com', port)
@@ -58,10 +109,10 @@ class TerminalMail():
                 print('Message {} Failed!'.format(msg_id))
             else:
                 messages.append(msg)
-        return ['None']
+        return messages 
 
 if __name__ == '__main__':
     email_address = sys.argv[1]
     password = sys.argv[2]
     terminal_mail = TerminalMail(email_address, password)
-    #print(terminal_mail.retr) 
+    print(terminal_mail.get_mail())

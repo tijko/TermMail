@@ -26,6 +26,7 @@ class TerminalMail():
     def __init__(self, usr: str, passwd: str) -> None:
         self.username = usr
         self.password = passwd
+        self._session_capabilities = dict()
         self.session = self.create_session()
         if not self.session:
             print('Error: TerminalMail Failed to create mail session')
@@ -85,6 +86,8 @@ class TerminalMail():
         access = mail_session.login(self.username, self.password)
         if not access[0] == 'OK':
             return None
+        for capability in mail_session.capabilities:
+            self.session_capabilities[capability] = True
         return mail_session
         
     def trash_removal(self) -> List:
@@ -96,6 +99,17 @@ class TerminalMail():
             # log?
             print('Error: TerminalMail Failed to clean trash')
         return trash 
+
+    def get_capabilities(self) -> dict:
+        return self._session_capabilities
+
+    def get_capability(self, attribute: str) -> bool:
+        try:
+            capability = self._session_capabilities[attribute]
+        except KeyError:
+            capability = False
+        finally:
+            return capability
 
     def get_mail(self) -> List[str]:
         self.session.select('inbox') # Use others...
@@ -116,3 +130,5 @@ if __name__ == '__main__':
     password = sys.argv[2]
     terminal_mail = TerminalMail(email_address, password)
     print(terminal_mail.get_mail())
+    print(terminal_mail.session.capabilities)
+    print(terminal_mail.session.host)
